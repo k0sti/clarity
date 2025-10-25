@@ -25,6 +25,14 @@ watch-init:
 watch-last:
     cargo run --bin clarity-watch -- --last
 
+# Orchestrate a file through AI expert system
+orchestrate FILE:
+    cargo run --bin clarity-orchestrate {{FILE}}
+
+# Orchestrate with specific model
+orchestrate-model MODEL FILE:
+    OLLAMA_MODEL={{MODEL}} cargo run --bin clarity-orchestrate {{FILE}}
+
 # Build all binaries and examples
 build:
     cargo build --bins --examples
@@ -87,6 +95,10 @@ example-vision IMAGE:
 # Run structured output example
 example-structured:
     cargo run --example structured_output
+
+# Run orchestration example
+example-orchestration:
+    cargo run --example orchestration
 
 # Run all examples (non-interactive ones)
 examples-all:

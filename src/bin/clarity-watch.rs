@@ -29,6 +29,10 @@ struct WatchConfig {
     /// Ollama model to use for orchestration
     #[serde(default = "default_ollama_model")]
     ollama_model: String,
+
+    /// Disable thinking tokens if supported by model
+    #[serde(default)]
+    disable_thinking: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -53,6 +57,8 @@ struct OllamaRequest {
     model: String,
     messages: Vec<OllamaMessage>,
     stream: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    options: Option<serde_json::Value>,
 }
 
 #[derive(Deserialize)]
@@ -92,6 +98,7 @@ impl Default for WatchConfig {
             watch_hidden: false,
             ollama_endpoint: default_ollama_endpoint(),
             ollama_model: default_ollama_model(),
+            disable_thinking: false,
         }
     }
 }
@@ -144,6 +151,7 @@ fn create_example_config(path: &Path) -> Result<(), Box<dyn std::error::Error>> 
         watch_hidden: false,
         ollama_endpoint: default_ollama_endpoint(),
         ollama_model: default_ollama_model(),
+        disable_thinking: true,
     };
 
     let json = serde_json::to_string_pretty(&example)?;
@@ -344,29 +352,39 @@ async fn dispatch_to_orchestrator(
     }
 
     // System prompt for the orchestrator
-    let system_prompt = r#"You are given metadata of a file: File's path, type, size, and modification timestamp. File contains notes, instructions or tasks to do. 
-    What kind of llm tool call wouldbe good get more information about the contents?
+    let mut system_prompt = r#"You are given metadata of a file: File's path, type, size, and modification timestamp.
+    File contains notes, instructions or tasks to do.
     What tool calls should be performed to extract and process the file contents.
+    1. Identify the appropriate tools or methods to read/process the file based on its type
+    2. Describe operations needed (e.g., transcription for audio, OCR for images, parsing for documents)
+Provide answer as function definitions of the following format:
+FunctionDef {
+    name: "get_weather".to_string(),
+    description: "Get the current weather for a location".to_string(),
+    parameters: json!({
+        "type": "object",
+        "properties": {
+            "location": {
+                "type": "string",
+                "description": "City name"
+            }
+        },
+        "required": ["location"]
+    }),
+}"#.to_string();
 
-1. Identify the appropriate tool or method to read/process the file based on its type
-2. Describe operations needed (e.g., transcription for audio, OCR for images, parsing for documents)
-
-Provide instructions to implement this tool for ollama llm.
-"#;
+    if config.disable_thinking {
+        system_prompt.push_str("\nProvide direct, concise answers without showing your reasoning process.");
+    }
 
     // Create user message with file info
     let user_message = format!(
         r#"File Path: {}
 File Type: {}
-File Size: {} bytes
-Last Modified: {} (Unix: {})
-
-What operation or tool call should be performed to determine the contents of this file?"#,
+File Size: {} bytes"#,
         file_dispatch.file_path,
         file_dispatch.file_type,
-        file_dispatch.file_size,
-        file_dispatch.modified_timestamp,
-        file_dispatch.modified_unix
+        file_dispatch.file_size
     );
 
     let request = OllamaRequest {
@@ -374,7 +392,7 @@ What operation or tool call should be performed to determine the contents of thi
         messages: vec![
             OllamaMessage {
                 role: "system".to_string(),
-                content: system_prompt.to_string(),
+                content: system_prompt,
                 thinking: String::new(),
             },
             OllamaMessage {
@@ -384,7 +402,15 @@ What operation or tool call should be performed to determine the contents of thi
             },
         ],
         stream: true,
+        options: Some(serde_json::json!({
+            "num_predict": -1,
+            "temperature": 0.7,
+        })),
     };
+
+    if config.disable_thinking {
+        println!("⚙️  Thinking disabled (via prompt)");
+    }
 
     println!("📡 Sending to: {}", endpoint);
     println!("🤖 Model: {}", config.ollama_model);
@@ -418,13 +444,14 @@ What operation or tool call should be performed to determine the contents of thi
                 let line = line.trim();
                 if !line.is_empty() {
                     if let Ok(parsed) = serde_json::from_str::<StreamResponse>(line) {
-                        // Print content if available, otherwise print thinking
+                        // Print content
                         if !parsed.message.content.is_empty() {
                             print!("{}", parsed.message.content);
                             std::io::stdout().flush()?;
-                        } else if !parsed.message.thinking.is_empty() {
-                            // Show thinking in gray/dim
-                            print!("\x1b[90m{}\x1b[0m", parsed.message.thinking);
+                        }
+                        // Print thinking in dim gray
+                        if !parsed.message.thinking.is_empty() {
+                            print!("\x1b[2m{}\x1b[0m", parsed.message.thinking);
                             std::io::stdout().flush()?;
                         }
                     }

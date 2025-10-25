@@ -7,6 +7,7 @@ Interactive terminal AI chat client for Ollama with comprehensive API examples.
 - 💬 Interactive chat with conversation history
 - 🎨 Beautiful markdown rendering with syntax highlighting
 - 🔍 File change watcher with configurable patterns
+- 🤖 **AI Orchestration System** - intelligent routing to specialized experts
 - 🔧 Model information and capabilities detection
 - 🛠️ Tool calling support indicator
 - 📝 Comprehensive examples for all Ollama API endpoints
@@ -121,6 +122,81 @@ Supported file types include:
 
 The AI model analyzes the file metadata and recommends processing steps (e.g., "transcribe this audio file", "OCR this image", etc.).
 
+## AI Orchestration System
+
+Clarity includes a sophisticated orchestration system that intelligently routes content to specialized AI experts based on intent and content type.
+
+### Architecture
+
+```
+Content → Translator → Orchestrator (LLM) → Experts → Results
+```
+
+**Components:**
+- **Translator**: Converts any content (files, text, media) into structured form
+- **Orchestrator**: Uses local LLM to analyze content and route to appropriate experts
+- **Experts**: Specialized agents for different tasks:
+  - **Producer** - Creates files, artifacts, and structured outputs
+  - **Artist** - Generates creative content (stories, poems, designs, ASCII art)
+  - **Scribe** - Documents information in Obsidian markdown vault
+  - **Agent** - Executes actions with available tools (bash, HTTP, file ops)
+  - **Analyst** - Provides research and in-depth analysis
+
+### Usage
+
+```bash
+# Orchestrate a file through the expert system
+just orchestrate path/to/file.txt
+
+# Use specific model for routing
+just orchestrate-model llama3.1 path/to/code.rs
+
+# Or directly with cargo
+cargo run --bin clarity-orchestrate document.md
+```
+
+### How It Works
+
+1. **Translation**: File content is decoded into structured textual form
+2. **Routing Decision**: LLM analyzes content and determines which expert(s) should handle it
+3. **Expert Processing**: Selected experts process the content (parallel or sequential)
+4. **Results**: Each expert returns output and any artifacts created
+
+**Example Flow:**
+```
+Code file → Translator → Orchestrator decides: "Analyst + Producer"
+         → Analyst provides code analysis
+         → Producer creates formatted documentation
+```
+
+### Configuration
+
+Experts can be configured via `.clarity.json`:
+
+```json
+{
+  "orchestrator": {
+    "model": "gpt-oss:20b",
+    "temperature": 0.7
+  },
+  "experts": {
+    "producer": {
+      "output_dir": "./artifacts"
+    },
+    "scribe": {
+      "vault_path": "~/obsidian/vault",
+      "default_location": "Clarity"
+    },
+    "agent": {
+      "confirm_destructive": true,
+      "allowed_tools": ["bash", "http", "file"]
+    }
+  }
+}
+```
+
+See [doc/ORCHESTRATION_ARCHITECTURE.md](doc/ORCHESTRATION_ARCHITECTURE.md) for detailed architecture documentation.
+
 ## Examples
 
 Explore all Ollama API features with these examples:
@@ -215,6 +291,17 @@ just example-structured
 **API:** `/api/chat` with `format` field
 **Features:** Type-safe JSON responses, schema validation
 
+### 8. Orchestration
+AI orchestration with specialized experts.
+
+```bash
+just example-orchestration
+# or: cargo run --example orchestration
+```
+
+**Features:** Content translation, LLM-based routing, multi-expert processing
+**Demonstrates:** All 5 experts (Producer, Artist, Scribe, Agent, Analyst)
+
 ## Ollama API Reference
 
 ### Core Endpoints
@@ -296,6 +383,10 @@ Clarity includes multiple binaries:
   - Real-time file monitoring
   - Automatic file type detection
   - AI-powered file analysis via `--last` flag
+- **`clarity-orchestrate`** - AI orchestration system with specialized experts
+  - Intelligent content translation
+  - LLM-based expert routing
+  - Multi-expert parallel/sequential execution
 
 ### Tech Stack
 
