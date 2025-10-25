@@ -1,0 +1,18 @@
+{
+  "watch_dirs": [
+    "src",
+    "examples"
+  ],
+  "ignore_patterns": [
+    "**/.git/**",
+    "**/target/**",
+    "**/node_modules/**",
+    "**/*.swp",
+    "**/*.tmp",
+    "**/.DS_Store"
+  ],
+  "debounce_ms": 200,
+  "watch_hidden": false,
+  "ollama_endpoint": "http://localhost:11434",
+  "ollama_model": "gpt-oss:20b"
+}
