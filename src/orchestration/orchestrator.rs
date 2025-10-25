@@ -26,6 +26,9 @@ impl Orchestrator {
     pub fn with_config(config: OrchestratorConfig) -> Self {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_millis(config.max_routing_time))
+            .connect_timeout(Duration::from_secs(10))
+            .pool_idle_timeout(Duration::from_secs(90))
+            .pool_max_idle_per_host(1)
             .build()
             .expect("Failed to create HTTP client");
 
@@ -69,7 +72,7 @@ impl Orchestrator {
                 },
             ],
             stream: false,
-            format: Some("json".to_string()),
+            format: None, // Don't use JSON format constraint - some models don't support it well
         };
 
         let response = self
@@ -78,7 +81,10 @@ impl Orchestrator {
             .json(&request)
             .send()
             .await
-            .map_err(|e| OrchestratorError::NetworkError(e.to_string()))?;
+            .map_err(|e| OrchestratorError::NetworkError(format!(
+                "Failed to connect to Ollama at {}: {}. Is Ollama running?",
+                self.config.ollama_endpoint, e
+            )))?;
 
         if !response.status().is_success() {
             return Err(OrchestratorError::LlmError(format!(
@@ -92,11 +98,65 @@ impl Orchestrator {
             .await
             .map_err(|e| OrchestratorError::ParseError(e.to_string()))?;
 
+        // Debug: print what we got from LLM
+        eprintln!("🔍 LLM Response: {}", chat_response.message.content);
+
+        // Check if response is empty
+        if chat_response.message.content.trim().is_empty() {
+            return Err(OrchestratorError::LlmError(
+                "LLM returned empty response. Check if Ollama is running and the model is available.".to_string()
+            ));
+        }
+
+        // Extract JSON from response (may be wrapped in code blocks or have extra text)
+        let json_str = self.extract_json(&chat_response.message.content)?;
+
         // Parse the routing decision from JSON
-        let decision: RoutingDecision = serde_json::from_str(&chat_response.message.content)
-            .map_err(|e| OrchestratorError::ParseError(format!("Failed to parse routing decision: {}", e)))?;
+        let decision: RoutingDecision = serde_json::from_str(&json_str)
+            .map_err(|e| {
+                eprintln!("❌ Failed to parse JSON. Extracted content:\n{}", json_str);
+                OrchestratorError::ParseError(format!(
+                    "Failed to parse routing decision: {}. Response was: '{}'",
+                    e, json_str
+                ))
+            })?;
 
         Ok(decision)
+    }
+
+    /// Extract JSON from LLM response (handles code blocks and extra text)
+    fn extract_json(&self, content: &str) -> Result<String, OrchestratorError> {
+        let content = content.trim();
+
+        // Try to find JSON within code blocks
+        if let Some(start) = content.find("```json") {
+            if let Some(end) = content[start..].find("```") {
+                let json_start = start + 7; // length of "```json"
+                let json_end = start + end;
+                return Ok(content[json_start..json_end].trim().to_string());
+            }
+        }
+
+        // Try to find JSON within plain code blocks
+        if let Some(start) = content.find("```") {
+            if let Some(end) = content[start + 3..].find("```") {
+                let json_start = start + 3;
+                let json_end = start + 3 + end;
+                return Ok(content[json_start..json_end].trim().to_string());
+            }
+        }
+
+        // Try to find JSON object directly
+        if let Some(start) = content.find('{') {
+            if let Some(end) = content.rfind('}') {
+                if end > start {
+                    return Ok(content[start..=end].to_string());
+                }
+            }
+        }
+
+        // Return as-is if no JSON markers found
+        Ok(content.to_string())
     }
 
     /// Build the system prompt for routing

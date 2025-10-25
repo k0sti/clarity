@@ -230,7 +230,7 @@ fn default_temperature() -> f32 {
 }
 
 fn default_max_routing_time() -> u64 {
-    30000
+    300000 // 5 minutes - LLMs can be slow
 }
 
 fn default_fallback() -> ExpertType {
