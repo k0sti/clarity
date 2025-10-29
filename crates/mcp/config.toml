@@ -1,0 +1,21 @@
+# Shared MCP Configuration
+# This file contains common settings for all agents and the user
+
+[nostr]
+# Nostr relay URLs
+relays = ["wss://strfry.atlantislabs.space"]
+
+[ollama]
+host = "http://localhost:11434"
+model = "llama3.2"
+
+[encryption]
+mode = "optional"  # optional, required, or disabled
+
+# Private keys for agents and user
+# Leave empty to generate new keys on first run
+[keys]
+user = ""  # User agent private key (nsec or hex)
+gardener = "nsec178gswp0rgfelhqn8y6g40ah639g4r89c90xue92z4jex4nwtde0qz9ys76"  # Gardening expert agent
+rust_expert = ""  # Rust expert agent
+math_tutor = ""  # Math tutor agent

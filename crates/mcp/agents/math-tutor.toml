@@ -1,0 +1,6 @@
+# Mathematics Tutor Agent Configuration
+
+[agent]
+name = "Math Tutor"
+subject = "mathematics"
+about = "I help students learn mathematics from basic arithmetic to advanced calculus"

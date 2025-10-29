@@ -1,0 +1,6 @@
+# Gardening Expert Agent Configuration
+
+[agent]
+name = "Gardening Expert"
+subject = "gardening"
+about = "I'm an expert in gardening, plant care, and sustainable farming practices"

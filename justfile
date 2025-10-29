@@ -96,6 +96,34 @@ build-cvm:
     cargo build -p cvm
 
 # ============================================================================
+# MCP Agent Commands
+# ============================================================================
+
+# Run agent with config file
+agent CONFIG:
+    cargo run --bin mcp-agent -- --config crates/mcp/agents/{{CONFIG}}.toml
+
+# Run user agent (TUI)
+user:
+    cargo run --bin mcp-user
+
+# Run gardening agent
+gardener:
+    just agent gardener
+
+# Run rust expert agent
+rust-expert:
+    just agent rust-expert
+
+# Run math tutor agent
+math-tutor:
+    just agent math-tutor
+
+# Build MCP crate
+build-mcp:
+    cargo build -p mcp
+
+# ============================================================================
 # Development Commands
 # ============================================================================
 
@@ -127,6 +155,7 @@ info:
     @echo "  - boostrap     : Lua bootstrap experiments"
     @echo "  - orchestrator : AI orchestration system"
     @echo "  - cvm          : Context VM (Nostr DVM/MCP bridge)"
+    @echo "  - mcp          : MCP over Nostr (ContextVM agents)"
     @echo "  - ollama       : Ollama API examples"
     @echo ""
     @echo "Binaries:"
@@ -134,6 +163,12 @@ info:
     @echo "  - clarity-chat        : Interactive chat"
     @echo "  - clarity-watch       : File watcher"
     @echo "  - cvm                 : Context VM CLI"
+    @echo "  - mcp-agent           : MCP agent with LLM"
+    @echo "  - mcp-user            : MCP user agent (TUI)"
+    @echo ""
+    @echo "Quick MCP commands:"
+    @echo "  just gardener         : Run gardening expert agent"
+    @echo "  just user             : Run user agent TUI"
 
 # ============================================================================
 # Quick Shortcuts

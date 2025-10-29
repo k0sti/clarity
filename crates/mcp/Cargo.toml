@@ -1,0 +1,56 @@
+[package]
+name = "mcp"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Nostr
+nostr-sdk = { version = "0.43.0", features = ["nip59"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# MCP (optional, for future integration)
+# mcp-core = "0.1.50"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# HTTP client for Ollama (agent binary)
+reqwest = { version = "0.12", features = ["json"], optional = true }
+
+# Terminal UI (user-agent binary)
+crossterm = { version = "0.28", optional = true }
+ratatui = { version = "0.29", optional = true }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# Configuration
+toml = "0.8"
+
+[features]
+default = ["agent", "user-agent"]
+agent = ["reqwest"]
+user-agent = ["crossterm", "ratatui"]
+
+[[bin]]
+name = "mcp-agent"
+required-features = ["agent"]
+
+[[bin]]
+name = "mcp-user"
+required-features = ["user-agent"]
+
+[lib]
+name = "mcp"
+path = "src/lib.rs"
