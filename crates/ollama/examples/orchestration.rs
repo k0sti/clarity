@@ -1,6 +1,6 @@
 // Orchestration example - demonstrates the expert routing system
 
-use clarity::orchestration::{ContentType, Orchestrator, TranslatedContent, Translator};
+use orchestrator::orchestration::{ContentType, Orchestrator, TranslatedContent, Translator};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -117,12 +117,12 @@ trait StatusDisplay {
     fn as_str(&self) -> &str;
 }
 
-impl StatusDisplay for clarity::orchestration::ResultStatus {
+impl StatusDisplay for orchestrator::orchestration::ResultStatus {
     fn as_str(&self) -> &str {
         match self {
-            clarity::orchestration::ResultStatus::Success => "Success",
-            clarity::orchestration::ResultStatus::Partial => "Partial",
-            clarity::orchestration::ResultStatus::Failed => "Failed",
+            orchestrator::orchestration::ResultStatus::Success => "Success",
+            orchestrator::orchestration::ResultStatus::Partial => "Partial",
+            orchestrator::orchestration::ResultStatus::Failed => "Failed",
         }
     }
 }

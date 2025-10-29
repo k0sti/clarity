@@ -3,3 +3,4 @@ Cargo.lock
 .direnv
 result
 .clarity.json
+ref/

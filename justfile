@@ -1,128 +1,160 @@
-# Clarity - Ollama Chat Client
-# Run `just --list` to see all available commands
+# Clarity - AI orchestration and Ollama examples
+# Usage: just <recipe>
 
-# Default recipe - show help
+# Default recipe - show available commands
 default:
     @just --list
 
-# Run the interactive chat
-chat:
-    cargo run --bin clarity-chat
-
-# Run chat with a specific model
-chat-model MODEL:
-    OLLAMA_MODEL={{MODEL}} cargo run --bin clarity-chat
-
-# Watch for file changes
-watch-files:
-    cargo run --bin clarity-watch
-
-# Initialize .clarity.json config
-watch-init:
-    cargo run --bin clarity-watch -- --init
-
-# Find and dispatch last modified file to orchestrator
-watch-last:
-    cargo run --bin clarity-watch -- --last
-
-# Orchestrate a file through AI expert system
-orchestrate FILE:
-    cargo run --bin clarity-orchestrate {{FILE}}
-
-# Orchestrate with specific model
-orchestrate-model MODEL FILE:
-    OLLAMA_MODEL={{MODEL}} cargo run --bin clarity-orchestrate {{FILE}}
-
-# Build all binaries and examples
+# Build all workspace crates
 build:
-    cargo build --bins --examples
+    cargo build
 
 # Build release version
 build-release:
-    cargo build --release --bins --examples
+    cargo build --release
 
-# Run tests
+# Run tests for all crates
 test:
     cargo test
 
-# Check code without building
+# Check all crates compile
 check:
-    cargo check --bins --examples
+    cargo check
 
-# Format code
+# Format all code
 fmt:
-    cargo fmt
+    cargo fmt --all
 
 # Run clippy linter
 lint:
-    cargo clippy --bins --examples
+    cargo clippy --all-targets --all-features
 
 # Clean build artifacts
 clean:
     cargo clean
 
-# Examples
-# --------
+# ============================================================================
+# Orchestrator Commands
+# ============================================================================
+
+# Run orchestration CLI on a file
+orchestrate FILE:
+    cargo run --bin clarity-orchestrate -- {{FILE}}
+
+# Run orchestration CLI with custom model
+orchestrate-model FILE MODEL:
+    OLLAMA_MODEL={{MODEL}} cargo run --bin clarity-orchestrate -- {{FILE}}
+
+# Run interactive chat
+chat:
+    cargo run --bin clarity-chat
+
+# Run file watcher
+watch:
+    cargo run --bin clarity-watch
+
+# ============================================================================
+# Ollama Examples
+# ============================================================================
+
+# List all available examples
+examples:
+    @echo "Available examples:"
+    @echo "  generate          - Single prompt completion"
+    @echo "  streaming_chat    - Streaming chat with markdown"
+    @echo "  embeddings        - Generate text embeddings"
+    @echo "  orchestration     - AI orchestration with experts"
+    @echo "  tool_calling      - Function calling with tools"
+    @echo "  vision            - Vision model with images"
+    @echo "  structured_output - Structured JSON output"
+    @echo "  model_management  - List, pull, and manage models"
+    @echo ""
+    @echo "Run with: just example <name>"
+
+# Run a specific example
+example NAME:
+    cargo run --example {{NAME}} -p ollama
+
+# Run example with custom model
+example-model NAME MODEL:
+    OLLAMA_MODEL={{MODEL}} cargo run --example {{NAME}} -p ollama
+
+# Build all examples
+build-examples:
+    cargo build --examples -p ollama
+
+# ============================================================================
+# CVM (Context VM) Commands
+# ============================================================================
+
+# Run CVM binary
+cvm *ARGS:
+    cargo run --bin cvm -- {{ARGS}}
+
+# Build CVM crate
+build-cvm:
+    cargo build -p cvm
+
+# ============================================================================
+# Development Commands
+# ============================================================================
+
+# Run all checks (fmt, lint, test, build)
+ci: fmt lint test build
+
+# Watch and rebuild on file changes (requires cargo-watch)
+dev:
+    cargo watch -x check -x test
+
+# Update dependencies
+update:
+    cargo update
+
+# Show dependency tree
+tree:
+    cargo tree
+
+# Audit dependencies for security vulnerabilities
+audit:
+    cargo audit
+
+# Show workspace info
+info:
+    @echo "Clarity Workspace"
+    @echo "================="
+    @echo ""
+    @echo "Crates:"
+    @echo "  - boostrap     : Lua bootstrap experiments"
+    @echo "  - orchestrator : AI orchestration system"
+    @echo "  - cvm          : Context VM (Nostr DVM/MCP bridge)"
+    @echo "  - ollama       : Ollama API examples"
+    @echo ""
+    @echo "Binaries:"
+    @echo "  - clarity-orchestrate : Orchestrate file processing"
+    @echo "  - clarity-chat        : Interactive chat"
+    @echo "  - clarity-watch       : File watcher"
+    @echo "  - cvm                 : Context VM CLI"
+
+# ============================================================================
+# Quick Shortcuts
+# ============================================================================
+
+# Run generate example (most common)
+gen:
+    just example generate
 
 # Run streaming chat example
-example-streaming:
-    cargo run --example streaming_chat
-
-# Run generation example
-example-generate:
-    cargo run --example generate
-
-# Run embeddings example (requires nomic-embed-text model)
-example-embeddings:
-    cargo run --example embeddings
-
-# Run tool calling example
-example-tools:
-    cargo run --example tool_calling
-
-# Run tool calling with specific model
-example-tools-model MODEL:
-    OLLAMA_MODEL={{MODEL}} cargo run --example tool_calling
-
-# Run model management example
-example-models:
-    cargo run --example model_management
-
-# Run vision example with image
-example-vision IMAGE:
-    cargo run --example vision {{IMAGE}}
-
-# Run structured output example
-example-structured:
-    cargo run --example structured_output
+stream:
+    just example streaming_chat
 
 # Run orchestration example
-example-orchestration:
-    cargo run --example orchestration
+orc:
+    just example orchestration
 
-# Run all examples (non-interactive ones)
-examples-all:
-    @echo "Running generate example..."
-    @cargo run --example generate
-    @echo "\nRunning model management example..."
-    @cargo run --example model_management
-    @echo "\nRunning structured output example..."
-    @cargo run --example structured_output
+# Quick chat with default model
+c:
+    just chat
 
-# Development
-# -----------
-
-# Watch and rebuild on changes
-watch:
-    cargo watch -x 'build --bins'
-
-# Install the binary
-install:
-    cargo install --path .
-
-# Show binary info
-info:
-    @echo "Available binaries:"
-    @ls -lh target/release/clarity-* 2>/dev/null || echo "  (run 'just build-release' first)"
-    @echo "\nAvailable examples:"
-    @ls -1 examples/*.rs | sed 's/examples\//  - /g' | sed 's/\.rs//g'
+# Quick watch current directory
+w:
+    just watch

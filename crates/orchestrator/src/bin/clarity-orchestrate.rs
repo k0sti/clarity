@@ -1,6 +1,6 @@
 // Clarity Orchestrate - AI orchestration with specialized experts
 
-use clarity::orchestration::{Orchestrator, Translator};
+use orchestrator::orchestration::{Orchestrator, Translator};
 use std::path::PathBuf;
 
 #[tokio::main]

@@ -25,7 +25,7 @@ struct ToolCall {
 
 async fn call_ollama(prompt: &str) -> Result<String, Box<dyn Error>> {
     let client = Client::builder()
-        .timeout(std::time::Duration::from_secs(30))
+        .timeout(std::time::Duration::from_secs(120))
         .build()?;
 
     let request = OllamaRequest {
