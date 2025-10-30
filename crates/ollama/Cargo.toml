@@ -14,3 +14,6 @@ crossterm = "0.28"
 
 # For orchestration example
 orchestrator = { path = "../orchestrator" }
+
+[dev-dependencies]
+base64 = "0.22"

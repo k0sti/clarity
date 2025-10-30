@@ -11,7 +11,7 @@ struct ModelInfo {
     name: String,
     modified_at: String,
     size: u64,
-    digest: String,
+    _digest: String,
 }
 
 #[derive(Serialize)]
@@ -21,10 +21,13 @@ struct ShowRequest {
 
 #[derive(Deserialize)]
 struct ShowResponse {
+    #[allow(dead_code)]
     modelfile: String,
     #[serde(default)]
+    #[allow(dead_code)]
     parameters: String,
     #[serde(default)]
+    #[allow(dead_code)]
     template: String,
     #[serde(default)]
     details: ModelDetails,

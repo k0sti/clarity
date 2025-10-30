@@ -47,11 +47,11 @@ mod tests {
 
         let plaintext = "Hello, Nostr!";
 
-        let ciphertext = encrypt_nip44(&keys1, keys2.public_key(), plaintext)
+        let ciphertext = encrypt_nip44(&keys1, &keys2.public_key(), plaintext)
             .await
             .unwrap();
 
-        let decrypted = decrypt_nip44(&keys2, keys1.public_key(), &ciphertext)
+        let decrypted = decrypt_nip44(&keys2, &keys1.public_key(), &ciphertext)
             .await
             .unwrap();
 

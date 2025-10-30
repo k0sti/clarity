@@ -18,6 +18,7 @@ struct Message {
 #[derive(Deserialize)]
 struct StreamResponse {
     message: Message,
+    #[allow(dead_code)]
     done: bool,
 }
 

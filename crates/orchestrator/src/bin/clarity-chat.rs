@@ -19,13 +19,13 @@ struct Message {
 struct ChatResponse {
     message: Message,
     #[serde(default)]
-    done: bool,
+    _done: bool,
     #[serde(default)]
-    total_duration: u64,
+    _total_duration: u64,
     #[serde(default)]
-    prompt_eval_count: i32,
+    _prompt_eval_count: i32,
     #[serde(default)]
-    eval_count: i32,
+    _eval_count: i32,
 }
 
 #[derive(Serialize)]
@@ -46,7 +46,7 @@ struct ModelDetails {
     #[serde(default)]
     parameter_size: String,
     #[serde(default)]
-    quantization_level: String,
+    _quantization_level: String,
     #[serde(default)]
     family: String,
 }
@@ -60,7 +60,7 @@ struct TagsResponse {
 struct ModelInfo {
     name: String,
     #[serde(default)]
-    size: u64,
+    _size: u64,
 }
 
 async fn get_model_info(client: &reqwest::Client, model: &str) -> Result<ShowResponse, Box<dyn std::error::Error>> {

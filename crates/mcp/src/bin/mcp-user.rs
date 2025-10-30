@@ -55,7 +55,7 @@ struct Args {
 struct DiscoveredAgent {
     pubkey: PublicKey,
     name: String,
-    version: Option<String>,
+    _version: Option<String>,
     about: Option<String>,
     tools: Vec<serde_json::Value>,
 }
@@ -63,7 +63,6 @@ struct DiscoveredAgent {
 enum AppEvent {
     AgentDiscovered(DiscoveredAgent),
     ToolsDiscovered { pubkey: PublicKey, tools: Vec<serde_json::Value> },
-    Input(String),
     Quit,
 }
 
@@ -369,7 +368,7 @@ async fn discover_agents(
                                 .as_str()
                                 .unwrap_or("Unknown")
                                 .to_string(),
-                            version: server_info["version"].as_str().map(String::from),
+                            _version: server_info["version"].as_str().map(String::from),
                             about: server_info["about"].as_str().map(String::from),
                             tools: Vec::new(), // Will be populated when tools list arrives
                         };
@@ -482,11 +481,6 @@ async fn run_app(
                 }
                 AppEvent::ToolsDiscovered { pubkey, tools } => {
                     app.handle_tools_discovered(pubkey, tools);
-                }
-                AppEvent::Input(input) => {
-                    if let Some(AppEvent::Quit) = app.handle_command(input) {
-                        return Ok(());
-                    }
                 }
                 AppEvent::Quit => return Ok(()),
             }

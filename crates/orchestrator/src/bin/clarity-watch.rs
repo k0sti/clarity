@@ -62,13 +62,9 @@ struct OllamaRequest {
 }
 
 #[derive(Deserialize)]
-struct OllamaResponse {
-    message: OllamaMessage,
-}
-
-#[derive(Deserialize)]
 struct StreamResponse {
     message: OllamaMessage,
+    #[allow(dead_code)]
     done: bool,
 }
 
