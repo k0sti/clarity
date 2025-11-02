@@ -2,10 +2,9 @@
 
 use clap::Parser;
 use mcp::config::MergedConfig;
-use mcp::core::types::{EncryptionMode, ServerInfo};
+use mcp::{EncryptionMode, ServerInfo, NostrServerTransportConfig};
 use mcp::gateway::Gateway;
 use mcp::signer;
-use mcp::transport::server::NostrServerTransportConfig;
 use nostr_sdk::nips::nip19::ToBech32;
 use std::path::PathBuf;
 use std::time::Duration;

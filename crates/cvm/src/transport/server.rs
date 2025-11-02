@@ -1,4 +1,4 @@
-//! Server-side Nostr transport for MCP
+//! Server-side Nostr transport for ContextVM
 
 use crate::core::{
     constants::*, error::{Error, Result}, types::*,
@@ -9,6 +9,15 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
+
+/// Incoming message metadata
+#[derive(Debug, Clone)]
+pub struct IncomingMessage {
+    pub content: String,
+    pub sender_pubkey: PublicKey,
+    pub event_id: EventId,
+    pub is_encrypted: bool,
+}
 
 /// Server-side transport configuration
 pub struct NostrServerTransportConfig {
@@ -177,10 +186,6 @@ impl NostrServerTransport {
             (rumor, false)
         };
 
-        // Extract MCP message from event content
-        let mcp_message: McpMessage = McpMessage::from_json(&actual_event.content)
-            .map_err(|e| Error::InvalidMessage(e.to_string()))?;
-
         // Get or create session
         let client_pubkey = actual_event.pubkey.to_hex();
         let mut sessions = self.sessions.write().await;
@@ -190,8 +195,8 @@ impl NostrServerTransport {
 
         session.update_activity();
 
-        // Process the MCP message (this would be handled by the MCP server)
-        tracing::debug!("Received MCP message: {:?}", mcp_message);
+        // Log received message (actual processing should be done by higher-level code)
+        tracing::debug!("Received message from {}: {}", actual_event.pubkey.to_hex(), actual_event.content);
 
         Ok(())
     }
@@ -200,11 +205,10 @@ impl NostrServerTransport {
     pub async fn send_response(
         &self,
         client_pubkey: &PublicKey,
-        response: McpMessage,
+        response_json: String,
         request_event_id: &EventId,
         use_encryption: bool,
     ) -> Result<EventId> {
-        let response_json = response.to_json()?;
         let client = self.relay_pool.client();
 
         let builder = EventBuilder::new(Kind::from(CTXVM_MESSAGES_KIND), response_json)

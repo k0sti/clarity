@@ -1,4 +1,4 @@
-//! Client-side Nostr transport for MCP
+//! Client-side Nostr transport for ContextVM
 
 use crate::core::{
     constants::*, error::{Error, Result}, types::*,
@@ -146,10 +146,9 @@ impl NostrClientTransport {
     pub async fn send_request(
         &self,
         server_pubkey: &PublicKey,
-        request: McpMessage,
+        request_json: String,
         use_encryption: bool,
-    ) -> Result<McpMessage> {
-        let request_json = request.to_json()?;
+    ) -> Result<String> {
         let client = self.relay_pool.client();
 
         let builder = EventBuilder::new(Kind::from(CTXVM_MESSAGES_KIND), request_json)
@@ -189,9 +188,7 @@ impl NostrClientTransport {
             .map_err(|_| Error::Timeout)?
             .map_err(|_| Error::Transport("Response channel closed".to_string()))?;
 
-        // Parse response
-        let response = McpMessage::from_json(&response_event.content)?;
-
-        Ok(response)
+        // Return response content as JSON string
+        Ok(response_event.content)
     }
 }

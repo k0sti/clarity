@@ -7,11 +7,10 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use mcp::config::SharedConfig;
-use mcp::core::constants::{SERVER_ANNOUNCEMENT_KIND, TOOLS_LIST_KIND};
-use mcp::core::types::EncryptionMode;
+use mcp::cvm::constants::{SERVER_ANNOUNCEMENT_KIND, TOOLS_LIST_KIND};
+use mcp::{EncryptionMode, NostrClientTransportConfig};
 use mcp::proxy::Proxy;
 use mcp::signer;
-use mcp::transport::client::NostrClientTransportConfig;
 use nostr_sdk::prelude::*;
 use nostr_sdk::nips::nip19::ToBech32;
 use ratatui::{

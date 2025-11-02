@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# Nostr
+# Context VM - Nostr transport layer
+cvm = { path = "../cvm" }
+
+# Nostr (for re-exports and MCP-specific Nostr usage)
 nostr-sdk = { version = "0.43.0", features = ["nip59"] }
 
 # Async runtime
