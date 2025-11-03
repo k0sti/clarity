@@ -96,14 +96,6 @@ build-cvm:
     cargo build -p cvm
 
 # ============================================================================
-# Assistant Commands
-# ============================================================================
-
-# Run Dioxus assistant (with nix flake)
-assistant:
-    nix develop ./crates/assistant -c cargo run -p assistant
-
-# ============================================================================
 # MCP Agent Commands
 # ============================================================================
 
@@ -165,7 +157,6 @@ info:
     @echo "  - cvm          : Context VM (Nostr DVM/MCP bridge)"
     @echo "  - mcp          : MCP over Nostr (ContextVM agents)"
     @echo "  - ollama       : Ollama API examples"
-    @echo "  - assistant    : Dioxus desktop assistant"
     @echo ""
     @echo "Binaries:"
     @echo "  - clarity-orchestrate : Orchestrate file processing"
@@ -174,7 +165,6 @@ info:
     @echo "  - cvm                 : Context VM CLI"
     @echo "  - mcp-agent           : MCP agent with LLM"
     @echo "  - mcp-user            : MCP user agent (TUI)"
-    @echo "  - assistant           : Dioxus desktop app"
     @echo ""
     @echo "Quick MCP commands:"
     @echo "  just gardener         : Run gardening expert agent"
@@ -204,6 +194,3 @@ c:
 w:
     just watch
 
-# Quick assistant launch
-a:
-    just assistant
