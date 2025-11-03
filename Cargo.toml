@@ -4,6 +4,6 @@ members = [
     "crates/orchestrator",
     "crates/cvm",
     "crates/ollama",
-    "crates/mcp",
+    "crates/mcp", "crates/imagent",
 ]
 resolver = "2"

@@ -1,0 +1,48 @@
+[package]
+name = "imagent"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "imagent"
+path = "src/lib.rs"
+
+[[bin]]
+name = "imagent-bin"
+path = "src/bin/imagent-bin.rs"
+
+[dependencies]
+# Candle ML framework
+candle-core = "0.9.2-alpha.1"
+candle-nn = "0.9.2-alpha.1"
+candle-transformers = "0.9.2-alpha.1"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# CLI
+clap = { version = "4.0", features = ["derive"] }
+
+# Tokenizers for text processing
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
+
+# Image processing
+image = "0.25"
+
+# HuggingFace Hub API
+hf-hub = "0.4"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Utilities
+rand = "0.8"
