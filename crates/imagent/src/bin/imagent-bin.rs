@@ -85,6 +85,48 @@ enum ModelVariant {
 }
 
 fn main() -> Result<()> {
+    // Load .env file if it exists (for HF_TOKEN and other environment variables)
+    // This allows users to store their HuggingFace token in a .env file
+    match dotenvy::dotenv() {
+        Ok(path) => {
+            eprintln!("✓ Loaded .env file from: {}", path.display());
+        }
+        Err(e) => {
+            eprintln!("⚠ .env file not found or couldn't be loaded: {}", e);
+        }
+    }
+
+    // Debug: Check if HF_TOKEN is set
+    match std::env::var("HF_TOKEN") {
+        Ok(token) => {
+            eprintln!("✓ HF_TOKEN is set (length: {} chars)", token.len());
+            eprintln!("  First 10 chars: {}...", &token[..10.min(token.len())]);
+            eprintln!("  Last 4 chars: ...{}", &token[token.len().saturating_sub(4)..]);
+        }
+        Err(_) => {
+            eprintln!("✗ HF_TOKEN is NOT set - Flux models may fail to download");
+            eprintln!("  Create a .env file with: HF_TOKEN=your_token_here");
+        }
+    }
+
+    // The hf-hub crate looks for HUGGING_FACE_HUB_TOKEN, not HF_TOKEN
+    // So we need to set it if HF_TOKEN is set but HUGGING_FACE_HUB_TOKEN is not
+    if let Ok(token) = std::env::var("HF_TOKEN") {
+        if std::env::var("HUGGING_FACE_HUB_TOKEN").is_err() {
+            std::env::set_var("HUGGING_FACE_HUB_TOKEN", &token);
+            eprintln!("→ Set HUGGING_FACE_HUB_TOKEN from HF_TOKEN");
+        }
+    }
+
+    // Also check for other HF environment variables
+    eprintln!("\nHuggingFace environment variables:");
+    for var in ["HF_TOKEN", "HUGGING_FACE_HUB_TOKEN", "HF_HOME"] {
+        match std::env::var(var) {
+            Ok(val) => eprintln!("  {}: set ({})", var, if var.contains("TOKEN") { "***" } else { &val }),
+            Err(_) => eprintln!("  {}: not set", var),
+        }
+    }
+
     let args = Args::parse();
 
     // Initialize logging
