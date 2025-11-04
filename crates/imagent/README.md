@@ -1,35 +1,28 @@
 # imagent
 
-AI Image Generation Library and CLI for Rust using Flux models with Candle.
+AI Image Generation Library and CLI for Rust using Stable Diffusion with Candle.
 
 ## Overview
 
-`imagent` is a Rust library and command-line tool for generating images using multiple AI models including Flux (Black Forest Labs) and Stable Diffusion (Stability AI), powered by the Candle ML framework from HuggingFace. It provides a clean, trait-based interface for image generation with support for both library integration and standalone CLI usage.
+`imagent` is a Rust library and command-line tool for generating images using Stable Diffusion models, powered by the Candle ML framework from HuggingFace. It provides a clean, trait-based interface for image generation with support for both library integration and standalone CLI usage.
 
 ## Current Implementation Status
 
-**Current Version**: Stub Implementation (v0.1.0)
+**Implemented Models**:
+- ✅ **Stable Diffusion v1.5** - Classic SD, fast and reliable
+- ✅ **Stable Diffusion v2.1** - Improved quality
+- ⏳ **Stable Diffusion XL** - Requires dual text encoders (not yet implemented)
+- ⏳ **SD-Turbo** - Requires dual text encoders (not yet implemented)
+- 🔨 **Flux Models** - Stub implementation only
 
-The crate currently uses **stub implementations** that generate colorful gradient placeholder images. This allows:
-- ✅ Testing the complete API surface
-- ✅ Validating image saving and file I/O
-- ✅ Developing applications that will use imagent
-- ✅ CLI interface testing and integration
-- ✅ Multi-model architecture testing
-
-**Supported Models** (stub implementations):
-- **Flux Models**: Schnell (4 steps), Dev (50 steps)
-- **Stable Diffusion**: v1.5, v2.1, XL, Turbo (1 step)
-
-**Full Implementation**: Work in progress. The complete implementation will include:
-- T5-XXL and CLIP text encoders for prompt processing
-- Flux/Stable Diffusion diffusion models for image generation
-- VAE/AutoEncoder for latent-to-pixel decoding
-- HuggingFace Hub integration for model downloading
-- GPU acceleration with CUDA support
-- Quantized model support (GGUF format)
-- Classifier-free guidance
-- Negative prompts
+**Working Features**:
+- ✅ Complete diffusion pipeline (CLIP → UNet → VAE)
+- ✅ Classifier-free guidance
+- ✅ HuggingFace Hub integration with automatic model downloads
+- ✅ CPU mode (tested and working)
+- ⏳ GPU/CUDA support (requires CUDA toolkit with nvcc)
+- ✅ Configurable image size and inference steps
+- ✅ Reproducible generation with seeds
 
 ## Installation
 
@@ -37,227 +30,155 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-imagent = { path = "../imagent" }
+imagent = { path = "../crates/imagent" }
 ```
 
 Or build the CLI tool:
 
 ```bash
+# CPU-only (works out of the box)
 cargo build --release --bin imagent-bin
+
+# With CUDA support (requires CUDA toolkit installed)
+cargo build --release --features cuda --bin imagent-bin
 ```
 
 ## Quick Start
 
-### Command Line Usage
-
-Generate an image with a text prompt:
+### CLI Usage
 
 ```bash
-# Default: Stable Diffusion Turbo (fastest)
-imagent-bin --prompt "A rusty robot walking on a beach"
+# Basic usage (256x256, 10 steps, CPU, SD v1.5)
+cargo run --bin imagent-bin -- --prompt "A robot in a forest"
 
-# Use Flux Schnell for faster generation
-imagent-bin \
-    --prompt "A beautiful sunset over mountains" \
-    --model flux-schnell \
-    --output sunset.png
+# Custom size and steps
+cargo run --bin imagent-bin -- --prompt "Sunset over mountains" \
+    --width 512 --height 512 -n 20
 
-# Use Stable Diffusion XL for high quality
-imagent-bin \
-    --prompt "Cyberpunk cityscape with neon lights" \
-    --model sd-xl \
-    --width 1024 \
-    --height 768 \
-    --output city.png
+# Use SD v2.1
+cargo run --bin imagent-bin -- --prompt "Abstract art" -m sd-v21
 
-# Use Stable Diffusion v1.5 (classic)
-imagent-bin \
-    --prompt "A majestic castle on a mountain peak" \
-    --model sd-v15 \
-    --output castle.png
-
-# Use specific seed for reproducibility
-imagent-bin \
-    --prompt "Abstract digital art" \
-    --model sd-turbo \
-    --seed 42 \
-    --output art.png
-
-# Flux Dev for higher quality (more steps)
-imagent-bin \
-    --prompt "Photorealistic portrait" \
-    --model flux-dev \
-    --num-steps 50 \
-    --output portrait.png
-
-# Custom dimensions (must be multiple of 8)
-imagent-bin \
-    --prompt "Wide landscape" \
-    --width 1280 \
-    --height 720 \
-    --model sd-xl
-
-# Verbose logging
-imagent-bin \
-    --prompt "Futuristic cityscape" \
-    --model sd-v21 \
-    --verbose
+# Specify output and seed
+cargo run --bin imagent-bin -- --prompt "Cat wearing a hat" \
+    -o my_cat.png --seed 42
 ```
 
 ### Library Usage
 
-#### Using Stable Diffusion
-
 ```rust
-use imagent::{StableDiffusionGenerator, StableDiffusionVersion, ImageGenConfig, ImageGenerator};
-use std::path::Path;
+use imagent::{ImageGenConfig, ImageGenerator, StableDiffusionGenerator, StableDiffusionVersion};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a Stable Diffusion Turbo generator (fastest)
+fn main() -> imagent::Result<()> {
+    // Create generator
     let mut generator = StableDiffusionGenerator::new(
-        StableDiffusionVersion::Turbo,
-        false  // use GPU
+        StableDiffusionVersion::V1_5,
+        true, // use_cpu
     )?;
 
-    // Configure image generation
+    // Configure generation
     let config = ImageGenConfig {
-        prompt: "A majestic castle on a mountain peak at sunset".to_string(),
+        prompt: "A beautiful landscape".to_string(),
         width: 512,
         height: 512,
-        num_steps: 1,  // Turbo only needs 1 step
-        seed: Some(42),
+        num_steps: 20,
+        seed: None,
         quantized: false,
-        use_cpu: false,
+        use_cpu: true,
     };
 
-    // Generate the image
+    // Generate and save
     let image = generator.generate(&config)?;
+    image.save("output.png")?;
 
-    // Save to file
-    image.save(Path::new("castle.png"))?;
-
-    println!("Image saved! Seed: {}", image.seed);
+    println!("Generated with seed: {}", image.seed);
     Ok(())
 }
 ```
 
-#### Using Flux
+## CLI Options
 
-```rust
-use imagent::{FluxGenerator, FluxModel, ImageGenConfig, ImageGenerator};
-use std::path::Path;
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a Flux generator (Schnell variant for speed)
-    let mut generator = FluxGenerator::new(FluxModel::Schnell, false)?;
-
-    // Configure image generation
-    let config = ImageGenConfig {
-        prompt: "A rusty robot walking on a beach".to_string(),
-        width: 1024,
-        height: 1024,
-        num_steps: 4,
-        seed: Some(42),
-        quantized: false,
-        use_cpu: false,
-    };
-
-    // Generate the image
-    let image = generator.generate(&config)?;
-
-    // Save to file
-    image.save(Path::new("robot.png"))?;
-
-    println!("Image saved! Seed: {}", image.seed);
-    Ok(())
-}
+```
+Options:
+  -p, --prompt <PROMPT>          Text prompt describing the image
+  -o, --output <OUTPUT>          Output file path [default: output.png]
+  -w, --width <WIDTH>            Image width (multiple of 8) [default: 256]
+      --height <HEIGHT>          Image height (multiple of 8) [default: 256]
+  -n, --num-steps <NUM_STEPS>    Inference steps [default: 10 for SD v1.5/v2.1]
+  -s, --seed <SEED>              Random seed for reproducibility
+  -m, --model <MODEL>            Model variant [default: sd-v15]
+                                 Options: sd-v15, sd-v21, sd-xl*, sd-turbo*
+                                 (* = not yet supported, requires dual encoders)
+  -q, --quantized                Use quantized models (not yet supported)
+      --cpu                      Force CPU usage
+  -v, --verbose                  Verbose logging
 ```
 
-## CLI Reference
+## Performance Tips
 
-### Required Arguments
-
-- `--prompt, -p <PROMPT>`: Text description of the image to generate
-
-### Optional Arguments
-
-**Output Configuration:**
-- `--output, -o <PATH>`: Output file path (default: `output.png`)
-- `--width, -w <WIDTH>`: Image width in pixels, must be multiple of 8 (default: `1024`)
-- `--height <HEIGHT>`: Image height in pixels, must be multiple of 8 (default: `1024`)
-
-**Model Selection:**
-- `--model, -m <MODEL>`: Model variant to use (default: `sd-turbo`)
-  - **Flux Models:**
-    - `flux-schnell`: Flux Schnell - 4 steps, faster
-    - `flux-dev`: Flux Dev - 50 steps, higher quality
-  - **Stable Diffusion Models:**
-    - `sd-v15`: Stable Diffusion v1.5 - Classic, 30 steps
-    - `sd-v21`: Stable Diffusion v2.1 - Improved, 30 steps
-    - `sd-xl`: Stable Diffusion XL - High quality, 30 steps
-    - `sd-turbo`: Stable Diffusion Turbo - Fastest, 1 step (default)
-
-**Generation Parameters:**
-- `--num-steps, -n <STEPS>`: Override default number of inference steps
-- `--seed, -s <SEED>`: Random seed for reproducible generation
-- `--quantized, -q`: Use quantized models (lower memory, faster)
-- `--cpu`: Force CPU execution instead of GPU
-
-**Logging:**
-- `--verbose, -v`: Enable detailed logging output
-
-**Other:**
-- `--help, -h`: Display help information
-- `--version, -V`: Display version information
-
-## API Documentation
-
-### Core Types
-
-#### `ImageGenConfig`
-
-Configuration structure for image generation:
-
-```rust
-pub struct ImageGenConfig {
-    pub prompt: String,        // Text prompt
-    pub width: usize,          // Image width (multiple of 8)
-    pub height: usize,         // Image height (multiple of 8)
-    pub num_steps: usize,      // Inference steps
-    pub seed: Option<u64>,     // Random seed (None = random)
-    pub quantized: bool,       // Use quantized models
-    pub use_cpu: bool,         // Force CPU usage
-}
+### Fast Testing (Quick Results)
+```bash
+# Smallest/fastest settings
+cargo run --bin imagent-bin -- --prompt "Test" --width 256 --height 256 -n 5
 ```
 
-Default values:
-- `width`, `height`: 1024
-- `num_steps`: 4 (Schnell default)
-- `seed`: Random
-- `quantized`: false
-- `use_cpu`: false
-
-#### `GeneratedImage`
-
-Result of image generation:
-
-```rust
-pub struct GeneratedImage {
-    pub data: Vec<u8>,      // RGB pixel data
-    pub width: u32,         // Image width
-    pub height: u32,        // Image height
-    pub prompt: String,     // Generation prompt
-    pub seed: u64,          // Seed used
-}
-
-impl GeneratedImage {
-    pub fn save(&self, path: &Path) -> Result<()>;
-}
+### Quality Generation
+```bash
+# Higher resolution and more steps
+cargo run --bin imagent-bin -- --prompt "Detailed scene" \
+    --width 512 --height 512 -n 30
 ```
 
-#### `ImageGenerator` Trait
+### First Run Notes
+- First run downloads model weights (~3.4GB for SD v1.5)
+- Models are cached in `~/.cache/huggingface/hub/`
+- Subsequent runs are much faster (no downloads)
+- Generation time on CPU:
+  - 256x256, 10 steps: ~30-60 seconds
+  - 512x512, 20 steps: ~2-4 minutes
 
-Interface for image generation backends:
+## GPU/CUDA Support
+
+### Requirements
+- NVIDIA GPU with CUDA support
+- CUDA Toolkit 12.x with `nvcc` compiler
+- For Nix users: CUDA packages are split and may need manual configuration
+
+### Building with CUDA
+```bash
+cargo build --release --features cuda --bin imagent-bin
+```
+
+### Known Issues with Nix
+The Nix CUDA packages are split across multiple store paths, which can cause build issues with `candle-kernels`. CPU mode works reliably on all systems.
+
+## Model Information
+
+### Stable Diffusion v1.5
+- **Size**: ~3.4GB
+- **Default steps**: 10
+- **Recommended resolution**: 512x512
+- **Guidance scale**: 7.5
+- **Status**: ✅ Fully working
+
+### Stable Diffusion v2.1
+- **Size**: ~3.4GB
+- **Default steps**: 10
+- **Recommended resolution**: 768x768
+- **Guidance scale**: 7.5
+- **Status**: ✅ Fully working
+
+### Stable Diffusion XL
+- **Status**: ❌ Not yet supported
+- **Reason**: Requires dual text encoders (CLIP-L + OpenCLIP-G)
+- **Error**: Shape mismatch in attention layers
+- **Future**: Will be implemented with dual encoder support
+
+### SD-Turbo
+- **Status**: ❌ Not yet supported (same reason as SDXL)
+
+## Architecture
+
+The library uses a trait-based design:
 
 ```rust
 pub trait ImageGenerator {
@@ -265,322 +186,50 @@ pub trait ImageGenerator {
 }
 ```
 
-#### `FluxModel` Enum
-
-Flux model variant selection:
-
-```rust
-pub enum FluxModel {
-    Schnell,  // 4 steps, faster
-    Dev,      // 50 steps, higher quality
-}
-
-impl FluxModel {
-    pub fn repo(&self) -> &str;            // HuggingFace repo name
-    pub fn default_steps(&self) -> usize;  // Default step count
-}
-```
-
-#### `FluxGenerator`
-
-Flux generator implementation:
-
-```rust
-pub struct FluxGenerator { /* ... */ }
-
-impl FluxGenerator {
-    pub fn new(model: FluxModel, use_cpu: bool) -> Result<Self>;
-}
-
-impl ImageGenerator for FluxGenerator {
-    fn generate(&mut self, config: &ImageGenConfig) -> Result<GeneratedImage>;
-}
-```
-
-#### `StableDiffusionVersion` Enum
-
-Stable Diffusion model variant selection:
-
-```rust
-pub enum StableDiffusionVersion {
-    V1_5,   // Classic, 30 steps
-    V2_1,   // Improved, 30 steps
-    Xl,     // High quality, 30 steps
-    Turbo,  // Fastest, 1 step
-}
-
-impl StableDiffusionVersion {
-    pub fn repo(&self) -> &str;            // HuggingFace repo name
-    pub fn default_steps(&self) -> usize;  // Default step count
-    pub fn default_guidance(&self) -> f64; // Default guidance scale
-}
-```
-
-#### `StableDiffusionGenerator`
-
-Stable Diffusion generator implementation:
-
-```rust
-pub struct StableDiffusionGenerator { /* ... */ }
-
-impl StableDiffusionGenerator {
-    pub fn new(version: StableDiffusionVersion, use_cpu: bool) -> Result<Self>;
-    pub fn with_guidance_scale(self, scale: f64) -> Self;
-}
-
-impl ImageGenerator for StableDiffusionGenerator {
-    fn generate(&mut self, config: &ImageGenConfig) -> Result<GeneratedImage>;
-}
-```
-
-### Error Handling
-
-```rust
-pub enum ImageGenError {
-    Candle(candle_core::Error),
-    ImageProcessing(String),
-    ModelLoading(String),
-    Tokenization(String),
-    InvalidConfig(String),
-    Io(std::io::Error),
-    HfHub(String),
-    Json(serde_json::Error),
-    Other(anyhow::Error),
-}
-
-pub type Result<T> = std::result::Result<T, ImageGenError>;
-```
-
-## Architecture
-
-### Project Structure
-
-```
-crates/imagent/
-├── Cargo.toml                # Dependencies and binary configuration
-├── README.md                 # This file
-└── src/
-    ├── lib.rs               # Public API and core types
-    ├── error.rs             # Error types and Result alias
-    ├── flux_stub.rs         # Current stub implementation
-    ├── flux_wip/            # Full implementation (WIP)
-    │   ├── mod.rs          # Main Flux implementation
-    │   ├── model.rs        # Model definitions
-    │   └── sampling.rs     # Diffusion sampling schedules
-    └── bin/
-        └── imagent-bin.rs  # CLI application
-```
-
-### Dependencies
-
-**Core ML Framework:**
-- `candle-core` (0.9.2-alpha.1): Tensor operations and device management
-- `candle-nn` (0.9.2-alpha.1): Neural network layers
-- `candle-transformers` (0.9.2-alpha.1): Pre-built transformer models
-
-**Model & Data:**
-- `tokenizers` (0.21): Text tokenization for prompts
-- `hf-hub` (0.3): HuggingFace Hub API client
-- `image` (0.25): Image encoding/decoding
-
-**Runtime & Utilities:**
-- `tokio` (1.x): Async runtime
-- `clap` (4.x): CLI argument parsing
-- `tracing` (0.1): Structured logging
-- `tracing-subscriber` (0.3): Log formatting
-- `rand` (0.8): Random number generation
-
-**Error Handling:**
-- `anyhow` (1.0): Error context
-- `thiserror` (2.0): Error derive macros
-
-**Serialization:**
-- `serde` (1.0): Serialization framework
-- `serde_json` (1.0): JSON support
-
-## Examples
-
-### Example 1: Basic Generation
-
-```rust
-use imagent::{FluxGenerator, FluxModel, ImageGenConfig, ImageGenerator};
-
-let mut gen = FluxGenerator::new(FluxModel::Schnell, false)?;
-let config = ImageGenConfig {
-    prompt: "A serene lake at sunset".into(),
-    ..Default::default()
-};
-let img = gen.generate(&config)?;
-img.save("lake.png".as_ref())?;
-```
-
-### Example 2: Custom Dimensions
-
-```rust
-use imagent::{FluxGenerator, FluxModel, ImageGenConfig, ImageGenerator};
-
-let mut gen = FluxGenerator::new(FluxModel::Schnell, false)?;
-let config = ImageGenConfig {
-    prompt: "Pixel art character".into(),
-    width: 512,
-    height: 512,
-    ..Default::default()
-};
-let img = gen.generate(&config)?;
-img.save("character.png".as_ref())?;
-```
-
-### Example 3: Reproducible Generation
-
-```rust
-use imagent::{FluxGenerator, FluxModel, ImageGenConfig, ImageGenerator};
-
-let mut gen = FluxGenerator::new(FluxModel::Schnell, false)?;
-let config = ImageGenConfig {
-    prompt: "Abstract patterns".into(),
-    seed: Some(12345),
-    ..Default::default()
-};
-
-// Generate the same image multiple times
-let img1 = gen.generate(&config)?;
-let img2 = gen.generate(&config)?;
-// Both images will be identical
-```
-
-### Example 4: Error Handling
-
-```rust
-use imagent::{FluxGenerator, FluxModel, ImageGenConfig, ImageGenerator, ImageGenError};
-
-let mut gen = FluxGenerator::new(FluxModel::Schnell, false)?;
-
-let config = ImageGenConfig {
-    prompt: "Test image".into(),
-    width: 1023,  // Invalid: not multiple of 8
-    height: 1024,
-    ..Default::default()
-};
-
-match gen.generate(&config) {
-    Ok(img) => println!("Generated: {}x{}", img.width, img.height),
-    Err(ImageGenError::InvalidConfig(msg)) => {
-        eprintln!("Configuration error: {}", msg);
-    }
-    Err(e) => eprintln!("Generation failed: {}", e),
-}
-```
-
-## Development
-
-### Building
-
-```bash
-# Build library only
-cargo build -p imagent
-
-# Build CLI tool
-cargo build -p imagent --bin imagent-bin
-
-# Build with optimizations
-cargo build -p imagent --release
-```
-
-### Testing
-
-```bash
-# Run tests
-cargo test -p imagent
-
-# Test CLI
-cargo run -p imagent --bin imagent-bin -- \
-    --prompt "Test image" \
-    --output /tmp/test.png \
-    --width 512 \
-    --height 512
-```
-
-### Completing the Full Implementation
-
-The work-in-progress full Flux implementation is in `src/flux_wip/`. To complete it:
-
-1. **Fix Candle API Compatibility**: Resolve type mismatches with the latest candle-transformers API
-2. **Model Configuration**: Create proper configs for T5-XXL, CLIP-L, and Flux models
-3. **HuggingFace Integration**: Test model downloading and caching
-4. **Diffusion Loop**: Implement the complete denoising process
-5. **GPU Optimization**: Ensure efficient CUDA kernel usage
-6. **Quantization**: Add GGUF quantized model support
-7. **Testing**: Validate with actual Flux model weights
-8. **Documentation**: Document model-specific parameters
-
-To switch to the full implementation once complete:
-1. Uncomment `mod flux;` in `src/lib.rs`
-2. Update exports to use `flux::{FluxGenerator, FluxModel}`
-3. Remove or keep stub for fallback/testing
+Implementations:
+- `StableDiffusionGenerator` - Full SD pipeline
+- `FluxGenerator` - Stub implementation (placeholder)
 
 ## Troubleshooting
 
-### "Width and height must be multiples of 8"
+### Error: "SDXL and SD-Turbo are not yet supported"
+Use `-m sd-v15` or `-m sd-v21` instead. SDXL requires dual text encoders which aren't implemented yet.
 
-Image dimensions must be divisible by 8 due to the model architecture. Use dimensions like 512, 768, 1024, etc.
+### Slow generation on CPU
+This is expected. Try:
+- Reduce image size: `--width 256 --height 256`
+- Reduce steps: `-n 5` or `-n 10`
+- Use GPU if available (requires CUDA build)
 
-```bash
-# ❌ Invalid
---width 1000 --height 1000
+### Out of memory
+- Reduce image size
+- Use CPU mode instead of GPU: `--cpu`
+- Close other applications
 
-# ✅ Valid
---width 1024 --height 1024
-```
+### Models not downloading
+- Check internet connection
+- Ensure `~/.cache/huggingface/hub/` is writable
+- Some models may require HuggingFace authentication (not currently implemented)
 
-### Logging Output
+## Development Status
 
-Enable verbose logging to see generation progress:
-
-```bash
-imagent-bin --prompt "..." --verbose
-```
-
-Or set the environment variable:
-
-```bash
-RUST_LOG=imagent=debug imagent-bin --prompt "..."
-```
-
-## Roadmap
-
-- [ ] Complete full Flux model implementation
-- [ ] Add support for Flux Dev model
-- [ ] Implement quantized model loading (GGUF)
-- [ ] Add batch generation support
-- [ ] Implement negative prompts
-- [ ] Add ControlNet support
-- [ ] Create async API
-- [ ] Add image-to-image generation
-- [ ] Support LoRA adapters
-- [ ] Add web API server mode
+- [x] Basic Stable Diffusion pipeline
+- [x] SD v1.5 and v2.1 support
+- [x] HuggingFace Hub integration
+- [x] CPU mode
+- [ ] SDXL dual encoder support
+- [ ] GPU/CUDA optimization
+- [ ] Flux model implementation
+- [ ] Quantized model support
+- [ ] Negative prompts
+- [ ] Image-to-image generation
+- [ ] Inpainting
 
 ## License
 
-See the workspace LICENSE file for licensing information.
+See workspace license.
 
-## Contributing
+## Credits
 
-Contributions welcome! The main areas needing work:
-
-1. Completing the full Flux implementation in `src/flux_wip/`
-2. Testing with real model weights
-3. Performance optimization
-4. Documentation improvements
-5. Example applications
-
-## Acknowledgments
-
-- **Black Forest Labs**: For the Flux models
-- **HuggingFace**: For the Candle ML framework
-- **Rust Community**: For the excellent ecosystem
-
-## Links
-
-- [Flux Models](https://github.com/black-forest-labs/flux)
-- [Candle ML Framework](https://github.com/huggingface/candle)
-- [HuggingFace Hub](https://huggingface.co/black-forest-labs)
+- Powered by [Candle](https://github.com/huggingface/candle) ML framework
+- Uses models from [Stability AI](https://stability.ai/) and [HuggingFace](https://huggingface.co/)
