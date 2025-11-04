@@ -70,6 +70,8 @@
           shellHook = ''
             export CUDA_PATH=${cudatoolkit}
             export CUDA_ROOT=${cudatoolkit}
+            export CUDA_HOME=${cudatoolkit}
+            export CUDACXX=${cuda_nvcc}/bin/nvcc
             export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${pkgs.lib.makeLibraryPath lib-packages}
 
             # Add NVIDIA drivers on NixOS
