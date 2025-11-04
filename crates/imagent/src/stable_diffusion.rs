@@ -30,9 +30,19 @@ impl StableDiffusionVersion {
 
     pub fn default_steps(&self) -> usize {
         match self {
-            Self::V1_5 | Self::V2_1 => 10,  // Reduced for faster generation
+            Self::V1_5 => 25,  // Good quality
+            Self::V2_1 => 30,  // Better quality
             Self::Xl => 30,
             Self::Turbo => 1,
+        }
+    }
+
+    pub fn recommended_size(&self) -> (usize, usize) {
+        match self {
+            Self::V1_5 => (512, 512),
+            Self::V2_1 => (768, 768),
+            Self::Xl => (1024, 1024),
+            Self::Turbo => (512, 512),
         }
     }
 

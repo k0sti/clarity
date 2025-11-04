@@ -19,12 +19,12 @@ struct Args {
     #[arg(short, long, default_value = "output.png")]
     output: PathBuf,
 
-    /// Image width (must be multiple of 8)
-    #[arg(short, long, default_value = "256")]
+    /// Image width (must be multiple of 8, 512 recommended for SD v1.5, 768 for v2.1)
+    #[arg(short, long, default_value = "512")]
     width: usize,
 
-    /// Image height (must be multiple of 8)
-    #[arg(long, default_value = "256")]
+    /// Image height (must be multiple of 8, 512 recommended for SD v1.5, 768 for v2.1)
+    #[arg(long, default_value = "512")]
     height: usize,
 
     /// Number of inference steps
@@ -50,6 +50,22 @@ struct Args {
     /// Verbose logging
     #[arg(short, long)]
     verbose: bool,
+
+    /// Quality preset (overrides width/height/steps if specified)
+    #[arg(long, value_enum)]
+    quality: Option<QualityPreset>,
+}
+
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum QualityPreset {
+    /// Fast preview (256x256, 10 steps)
+    Fast,
+    /// Standard quality (512x512, 25 steps)
+    Standard,
+    /// High quality (768x768, 35 steps)
+    High,
+    /// Ultra quality (1024x1024, 50 steps)
+    Ultra,
 }
 
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
@@ -119,14 +135,27 @@ fn main() -> Result<()> {
         }
     };
 
-    // Determine num_steps
-    let num_steps = args.num_steps.unwrap_or(default_steps);
+    // Apply quality preset if specified
+    let (width, height, num_steps) = if let Some(quality) = args.quality {
+        let (w, h, steps) = match quality {
+            QualityPreset::Fast => (256, 256, 10),
+            QualityPreset::Standard => (512, 512, 25),
+            QualityPreset::High => (768, 768, 35),
+            QualityPreset::Ultra => (1024, 1024, 50),
+        };
+        tracing::info!("Using {:?} quality preset: {}x{}, {} steps", quality, w, h, steps);
+        (w, h, steps)
+    } else {
+        // Use CLI args or defaults
+        let steps = args.num_steps.unwrap_or(default_steps);
+        (args.width, args.height, steps)
+    };
 
     // Create configuration
     let config = ImageGenConfig {
         prompt: args.prompt,
-        width: args.width,
-        height: args.height,
+        width,
+        height,
         num_steps,
         seed: args.seed,
         quantized: args.quantized,
