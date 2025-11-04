@@ -193,6 +193,7 @@ impl FluxGenerator {
             VarBuilder::from_mmaped_safetensors(&[weights_path_1, weights_path_2], self.dtype, &self.device)?
         };
 
+        // T5EncoderModel::load already adds "encoder" prefix, so don't add it again
         self.t5_encoder = Some(t5::T5EncoderModel::load(vb, &config)?);
 
         Ok(())
@@ -226,6 +227,9 @@ impl FluxGenerator {
             VarBuilder::from_mmaped_safetensors(&[weights_path], self.dtype, &self.device)?
         };
 
+        // The Flux CLIP weights use "text_model" prefix, need to access that namespace
+        let vb = vb.pp("text_model");
+
         self.clip_encoder = Some(clip::text_model::ClipTextTransformer::new(vb, &config)?);
 
         Ok(())
@@ -240,13 +244,20 @@ impl FluxGenerator {
             ));
         }
 
-        // Load the main Flux transformer weights
-        let filename = match self.model {
-            FluxModel::Schnell => "transformer/diffusion_pytorch_model.safetensors",
-            FluxModel::Dev => "transformer/diffusion_pytorch_model.safetensors",
-        };
-
-        let weights_path = self.download_file(self.model.repo(), filename)?;
+        // Load the main Flux transformer weights (sharded across 3 files)
+        tracing::info!("Loading Flux transformer weights (sharded across 3 files)");
+        let weights_path_1 = self.download_file(
+            self.model.repo(),
+            "transformer/diffusion_pytorch_model-00001-of-00003.safetensors",
+        )?;
+        let weights_path_2 = self.download_file(
+            self.model.repo(),
+            "transformer/diffusion_pytorch_model-00002-of-00003.safetensors",
+        )?;
+        let weights_path_3 = self.download_file(
+            self.model.repo(),
+            "transformer/diffusion_pytorch_model-00003-of-00003.safetensors",
+        )?;
 
         // Use the appropriate config for the model variant
         let config = match self.model {
@@ -255,7 +266,11 @@ impl FluxGenerator {
         };
 
         let vb = unsafe {
-            VarBuilder::from_mmaped_safetensors(&[weights_path], self.dtype, &self.device)?
+            VarBuilder::from_mmaped_safetensors(
+                &[weights_path_1, weights_path_2, weights_path_3],
+                self.dtype,
+                &self.device,
+            )?
         };
 
         self.flux_model = Some(flux::model::Flux::new(&config, vb)?);
