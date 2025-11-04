@@ -4,3 +4,4 @@ Cargo.lock
 result
 .clarity.json
 ref/
+.env

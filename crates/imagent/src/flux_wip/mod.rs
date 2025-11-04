@@ -7,6 +7,7 @@ use crate::{GeneratedImage, ImageGenConfig, ImageGenError, ImageGenerator, Resul
 use candle_core::{DType, Device, IndexOp, Module, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::{clip, flux, t5};
+use flux::WithForward;
 use rand::SeedableRng;
 use std::path::PathBuf;
 use tokenizers::Tokenizer;
@@ -113,24 +114,34 @@ impl FluxGenerator {
     fn load_tokenizers(&mut self) -> Result<()> {
         tracing::info!("Loading tokenizers");
 
-        // Load T5 tokenizer
-        let t5_tokenizer_path = self.download_file(
-            "google/t5-v1_1-xxl",
-            "tokenizer.json",
-        )?;
-        self.t5_tokenizer = Some(
-            Tokenizer::from_file(t5_tokenizer_path)
-                .map_err(|e| ImageGenError::Tokenization(e.to_string()))?,
+        // For now, use pre-existing CLIP tokenizer from OpenAI
+        // The Flux tokenizer files are in a different format that requires more complex loading
+        tracing::info!("Loading CLIP tokenizer from OpenAI CLIP repo");
+        let clip_api = hf_hub::api::sync::Api::new()
+            .map_err(|e| ImageGenError::HfHub(e.to_string()))?;
+        let clip_tokenizer_path = clip_api
+            .model("openai/clip-vit-large-patch14".to_string())
+            .get("tokenizer.json")
+            .map_err(|e| ImageGenError::HfHub(e.to_string()))?;
+
+        self.clip_tokenizer = Some(
+            Tokenizer::from_file(&clip_tokenizer_path)
+                .map_err(|e| ImageGenError::Tokenization(format!("Failed to load CLIP tokenizer: {}", e)))?,
         );
 
-        // Load CLIP tokenizer
-        let clip_tokenizer_path = self.download_file(
-            "openai/clip-vit-large-patch14",
-            "tokenizer.json",
-        )?;
-        self.clip_tokenizer = Some(
-            Tokenizer::from_file(clip_tokenizer_path)
-                .map_err(|e| ImageGenError::Tokenization(e.to_string()))?,
+        // Load T5 tokenizer from Google's T5 repo
+        // The Flux model uses the same T5 tokenizer
+        tracing::info!("Loading T5 tokenizer from Google T5 repo");
+        let t5_api = hf_hub::api::sync::Api::new()
+            .map_err(|e| ImageGenError::HfHub(e.to_string()))?;
+        let t5_tokenizer_path = t5_api
+            .model("google-t5/t5-large".to_string())
+            .get("tokenizer.json")
+            .map_err(|e| ImageGenError::HfHub(e.to_string()))?;
+
+        self.t5_tokenizer = Some(
+            Tokenizer::from_file(&t5_tokenizer_path)
+                .map_err(|e| ImageGenError::Tokenization(format!("Failed to load T5 tokenizer: {}", e)))?,
         );
 
         Ok(())
@@ -139,32 +150,47 @@ impl FluxGenerator {
     fn load_t5_encoder(&mut self) -> Result<()> {
         tracing::info!("Loading T5 encoder");
 
-        // Create T5 config for v1.1-xxl
+        // Create T5-v1.1-XXL config (matches text_encoder_2 in Flux models)
+        // Based on https://huggingface.co/google/t5-v1_1-xxl/blob/main/config.json
         let config = t5::Config {
             vocab_size: 32128,
             d_model: 4096,
             d_kv: 64,
             d_ff: 10240,
             num_layers: 24,
-            num_decoder_layers: 24,
+            num_decoder_layers: Some(24),
             num_heads: 64,
-            relative_attention_num_buckets: Some(32),
-            relative_attention_max_distance: Some(128),
+            relative_attention_num_buckets: 32,
+            relative_attention_max_distance: 128,
             dropout_rate: 0.1,
             layer_norm_epsilon: 1e-6,
             initializer_factor: 1.0,
-            feed_forward_proj: t5::FeedForwardProj::Gated,
+            feed_forward_proj: t5::ActivationWithOptionalGating {
+                gated: true,
+                activation: candle_nn::Activation::Relu,
+            },
             is_encoder_decoder: true,
             tie_word_embeddings: false,
+            is_decoder: false,
+            use_cache: false,
+            pad_token_id: 0,
+            eos_token_id: 1,
+            decoder_start_token_id: Some(0),
         };
 
-        let weights_path = self.download_file(
-            "google/t5-v1_1-xxl",
-            "model.safetensors",
+        // Load T5 weights from the Flux model repo (sharded across 2 files)
+        tracing::info!("Loading T5 weights (sharded across 2 files)");
+        let weights_path_1 = self.download_file(
+            self.model.repo(),
+            "text_encoder_2/model-00001-of-00002.safetensors",
+        )?;
+        let weights_path_2 = self.download_file(
+            self.model.repo(),
+            "text_encoder_2/model-00002-of-00002.safetensors",
         )?;
 
         let vb = unsafe {
-            VarBuilder::from_mmaped_safetensors(&[weights_path], self.dtype, &self.device)?
+            VarBuilder::from_mmaped_safetensors(&[weights_path_1, weights_path_2], self.dtype, &self.device)?
         };
 
         self.t5_encoder = Some(t5::T5EncoderModel::load(vb, &config)?);
@@ -175,22 +201,25 @@ impl FluxGenerator {
     fn load_clip_encoder(&mut self) -> Result<()> {
         tracing::info!("Loading CLIP encoder");
 
-        // Create CLIP config for vit-large-patch14
+        // Use CLIP-L config (matches text_encoder in Flux models)
+        // This is the standard CLIP vit-large-patch14 configuration
         let config = clip::text_model::ClipTextConfig {
             vocab_size: 49408,
             embed_dim: 768,
             intermediate_size: 3072,
             max_position_embeddings: 77,
-            pad_with: Some(1),
+            pad_with: Some("!".to_string()),
             num_hidden_layers: 12,
             num_attention_heads: 12,
             projection_dim: 768,
             activation: clip::text_model::Activation::QuickGelu,
         };
 
+        // Load CLIP weights from the Flux model repo
+        tracing::info!("Loading CLIP weights from text_encoder/model.safetensors");
         let weights_path = self.download_file(
-            "openai/clip-vit-large-patch14",
-            "model.safetensors",
+            self.model.repo(),
+            "text_encoder/model.safetensors",
         )?;
 
         let vb = unsafe {
@@ -205,31 +234,31 @@ impl FluxGenerator {
     fn load_flux_model(&mut self, quantized: bool) -> Result<()> {
         tracing::info!("Loading Flux model");
 
-        let filename = if quantized {
-            match self.model {
-                FluxModel::Schnell => "flux1-schnell-Q2_K.gguf",
-                FluxModel::Dev => "flux1-dev-Q2_K.gguf",
-            }
-        } else {
-            "flux1-schnell.safetensors"
+        if quantized {
+            return Err(ImageGenError::ModelLoading(
+                "Quantized models not yet implemented".into(),
+            ));
+        }
+
+        // Load the main Flux transformer weights
+        let filename = match self.model {
+            FluxModel::Schnell => "transformer/diffusion_pytorch_model.safetensors",
+            FluxModel::Dev => "transformer/diffusion_pytorch_model.safetensors",
         };
 
         let weights_path = self.download_file(self.model.repo(), filename)?;
 
-        let config = flux::model::Config::schnell();
+        // Use the appropriate config for the model variant
+        let config = match self.model {
+            FluxModel::Schnell => flux::model::Config::schnell(),
+            FluxModel::Dev => flux::model::Config::dev(),
+        };
 
-        if quantized {
-            // TODO: Add GGUF quantized loading support
-            return Err(ImageGenError::ModelLoading(
-                "Quantized models not yet implemented".into(),
-            ));
-        } else {
-            let vb = unsafe {
-                VarBuilder::from_mmaped_safetensors(&[weights_path], self.dtype, &self.device)?
-            };
+        let vb = unsafe {
+            VarBuilder::from_mmaped_safetensors(&[weights_path], self.dtype, &self.device)?
+        };
 
-            self.flux_model = Some(flux::model::Flux::new(&config, vb)?);
-        }
+        self.flux_model = Some(flux::model::Flux::new(&config, vb)?);
 
         Ok(())
     }
@@ -238,8 +267,8 @@ impl FluxGenerator {
         tracing::info!("Loading AutoEncoder");
 
         let weights_path = self.download_file(
-            "black-forest-labs/FLUX.1-schnell",
-            "ae.safetensors",
+            self.model.repo(),
+            "vae/diffusion_pytorch_model.safetensors",
         )?;
 
         let vb = unsafe {
@@ -355,7 +384,7 @@ impl ImageGenerator for FluxGenerator {
         let latent_height = config.height / 8;
         let latent_width = config.width / 8;
 
-        let mut rng = rand::rngs::StdRng::from_seed({
+        let _rng = rand::rngs::StdRng::from_seed({
             let mut seed_bytes = [0u8; 32];
             seed_bytes[..8].copy_from_slice(&seed.to_le_bytes());
             seed_bytes
@@ -377,23 +406,39 @@ impl ImageGenerator for FluxGenerator {
 
         let timesteps = sampling::get_schedule(config.num_steps);
 
-        let mut img = latents;
-        for (step, &t) in timesteps.iter().enumerate() {
-            tracing::info!("Step {}/{}", step + 1, config.num_steps);
+        // Create img_ids and txt_ids for positional embeddings
+        let img_ids = Tensor::zeros((1, latent_height * latent_width, 3), self.dtype, &self.device)?;
+        let txt_seq_len = t5_embeddings.dim(1)?;
+        let txt_ids = Tensor::zeros((1, txt_seq_len, 3), self.dtype, &self.device)?;
 
-            let guidance = Tensor::new(&[3.5f32], &self.device)?
+        // Pooled text embeddings (CLIP)
+        let y = clip_embeddings.mean(1)?;
+
+        // Prepare latents as flattened sequence
+        let mut img = latents.flatten(2, 3)?.transpose(1, 2)?; // [B, H*W, C]
+
+        for (step, &t) in timesteps.iter().enumerate() {
+            tracing::debug!("Step {}/{}", step + 1, config.num_steps);
+
+            let guidance_value = 3.5f32;
+            let guidance = Tensor::new(&[guidance_value], &self.device)?
                 .to_dtype(self.dtype)?;
 
             let timestep_tensor = Tensor::new(&[t], &self.device)?
                 .to_dtype(self.dtype)?;
 
-            // Concatenate embeddings
-            let txt = Tensor::cat(&[&t5_embeddings, &clip_embeddings], 1)?;
+            // Run model with WithForward trait
+            let noise_pred = flux_model.forward(
+                &img,
+                &img_ids,
+                &t5_embeddings,
+                &txt_ids,
+                &timestep_tensor,
+                &y,
+                Some(&guidance)
+            )?;
 
-            // Run model
-            let noise_pred = flux_model.forward(&img, &timestep_tensor, &txt, &guidance)?;
-
-            // Update latents
+            // Update latents using Euler method
             let dt = if step < timesteps.len() - 1 {
                 timesteps[step + 1] - t
             } else {
@@ -403,8 +448,11 @@ impl ImageGenerator for FluxGenerator {
             let dt_tensor = Tensor::new(&[dt], &self.device)?
                 .to_dtype(self.dtype)?;
 
-            img = (img + noise_pred * dt_tensor)?;
+            img = (&img + &noise_pred.broadcast_mul(&dt_tensor)?)?;
         }
+
+        // Reshape back to image format
+        let img = img.transpose(1, 2)?.reshape((1, 16, latent_height, latent_width))?;
 
         // Decode latents
         tracing::info!("Decoding image");

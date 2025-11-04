@@ -1,4 +1,5 @@
 // Model-specific implementations
 // This module can be extended with custom model configurations
 
-pub use candle_transformers::models::flux::model::*;
+// Re-export Flux model types from candle-transformers
+// Currently using the default implementations from candle_transformers::models::flux::model

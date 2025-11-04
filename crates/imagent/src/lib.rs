@@ -1,17 +1,16 @@
 // imagent - AI Image Generation Library
-// Provides interface for generating images using Flux models via Candle
+// Provides interface for generating images using Flux and Stable Diffusion models via Candle
 
-// Full implementation (work in progress - in flux_wip directory)
-// mod flux;
+// Full Flux implementation
+mod flux_wip;
 
-// Stub implementations (currently active)
-mod flux_stub;
+// Stable Diffusion implementation
 mod stable_diffusion;
 
 pub mod error;
 
 pub use error::{ImageGenError, Result};
-pub use flux_stub::{FluxGenerator, FluxModel};
+pub use flux_wip::{FluxGenerator, FluxModel};
 pub use stable_diffusion::{StableDiffusionGenerator, StableDiffusionVersion};
 
 use serde::{Deserialize, Serialize};
