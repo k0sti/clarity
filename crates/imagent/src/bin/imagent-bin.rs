@@ -20,11 +20,11 @@ struct Args {
     output: PathBuf,
 
     /// Image width (must be multiple of 8)
-    #[arg(short, long, default_value = "1024")]
+    #[arg(short, long, default_value = "256")]
     width: usize,
 
     /// Image height (must be multiple of 8)
-    #[arg(long, default_value = "1024")]
+    #[arg(long, default_value = "256")]
     height: usize,
 
     /// Number of inference steps
@@ -36,7 +36,7 @@ struct Args {
     seed: Option<u64>,
 
     /// Model variant to use
-    #[arg(short, long, value_enum, default_value = "sd-turbo")]
+    #[arg(short, long, value_enum, default_value = "sd-v15")]
     model: ModelVariant,
 
     /// Use quantized models (faster, less memory)

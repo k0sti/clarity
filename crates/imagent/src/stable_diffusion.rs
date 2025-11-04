@@ -30,7 +30,7 @@ impl StableDiffusionVersion {
 
     pub fn default_steps(&self) -> usize {
         match self {
-            Self::V1_5 | Self::V2_1 => 30,
+            Self::V1_5 | Self::V2_1 => 10,  // Reduced for faster generation
             Self::Xl => 30,
             Self::Turbo => 1,
         }
@@ -56,6 +56,14 @@ pub struct StableDiffusionGenerator {
 impl StableDiffusionGenerator {
     /// Create a new Stable Diffusion generator
     pub fn new(version: StableDiffusionVersion, use_cpu: bool) -> Result<Self> {
+        // SDXL and Turbo require dual text encoders (CLIP-L + OpenCLIP-G)
+        // which is not yet implemented
+        if matches!(version, StableDiffusionVersion::Xl | StableDiffusionVersion::Turbo) {
+            return Err(ImageGenError::InvalidConfig(
+                "SDXL and SD-Turbo are not yet supported. These models require dual text encoders (CLIP + CLIP2) which is not yet implemented. Please use SD v1.5 or v2.1 instead.".into()
+            ));
+        }
+
         let device = if use_cpu {
             Device::Cpu
         } else {
