@@ -239,18 +239,6 @@ let config = ImageGenConfig {
 3. **Compile Mode**: Use torch.compile equivalent
 4. **Parallel Sampling**: Multiple images simultaneously
 
-## Comparison: Stub vs. Real Implementation
-
-### Flux (Still Stub)
-
-`src/flux_stub.rs` - Generates gradient placeholders
-
-### Stable Diffusion (Real Implementation)
-
-`src/stable_diffusion.rs` - Full generative AI pipeline
-
-The Stable Diffusion implementation demonstrates the complete architecture that will eventually be applied to Flux models as well.
-
 ## Development Notes
 
 ### Adding New Models
