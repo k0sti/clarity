@@ -9,20 +9,24 @@ AI Image Generation Library and CLI for Rust using Stable Diffusion with Candle.
 ## Current Implementation Status
 
 **Implemented Models**:
-- ✅ **Stable Diffusion v1.5** - Classic SD, fast and reliable
-- ✅ **Stable Diffusion v2.1** - Improved quality
-- ⏳ **Stable Diffusion XL** - Requires dual text encoders (not yet implemented)
-- ⏳ **SD-Turbo** - Requires dual text encoders (not yet implemented)
-- 🔨 **Flux Models** - Stub implementation only
+- ✅ **Stable Diffusion v1.5** - Classic SD, fast and reliable (tested, working)
+- ✅ **Stable Diffusion v2.1** - Improved quality (tested, working)
+- ⏳ **Stable Diffusion XL** - Requires dual CLIP encoders (in progress)
+- ⏳ **SD-Turbo** - Requires dual CLIP encoders (in progress)
+- ✅ **Flux Schnell** - Fast 4-step generation (T5-XXL + CLIP, sharded weights)
+- ✅ **Flux Dev** - High quality 50-step generation (T5-XXL + CLIP, sharded weights)
 
 **Working Features**:
-- ✅ Complete diffusion pipeline (CLIP → UNet → VAE)
-- ✅ Classifier-free guidance
+- ✅ Complete SD pipeline (CLIP → UNet → VAE)
+- ✅ Complete Flux pipeline (T5-XXL + CLIP → Transformer → AutoEncoder)
+- ✅ Classifier-free guidance for SD models
 - ✅ HuggingFace Hub integration with automatic model downloads
+- ✅ Sharded safetensors support for large models (Flux T5-XXL)
 - ✅ CPU mode (tested and working)
-- ⏳ GPU/CUDA support (requires CUDA toolkit with nvcc)
+- ✅ GPU/CUDA support (requires CUDA toolkit with nvcc)
 - ✅ Configurable image size and inference steps
 - ✅ Reproducible generation with seeds
+- ✅ Quality presets (fast, standard, high, ultra)
 
 ## Installation
 
@@ -42,6 +46,20 @@ cargo build --release --bin imagent-bin
 # With CUDA support (requires CUDA toolkit installed)
 cargo build --release --features cuda --bin imagent-bin
 ```
+
+### HuggingFace Authentication
+
+Flux models require authentication. Create a `.env` file in your project root:
+
+```bash
+# .env
+HF_TOKEN=your_huggingface_token_here
+```
+
+**Important**:
+1. Get your token from: https://huggingface.co/settings/tokens
+2. Accept the Flux model license at: https://huggingface.co/black-forest-labs/FLUX.1-schnell
+3. The application automatically loads `.env` and maps `HF_TOKEN` to `HUGGING_FACE_HUB_TOKEN`
 
 ## Quick Start
 
@@ -106,7 +124,7 @@ Options:
   -n, --num-steps <NUM_STEPS>    Inference steps [default: 10 for SD v1.5/v2.1]
   -s, --seed <SEED>              Random seed for reproducibility
   -m, --model <MODEL>            Model variant [default: sd-v15]
-                                 Options: sd-v15, sd-v21, sd-xl*, sd-turbo*
+                                 Options: sd-v15, sd-v21, sd-xl*, sd-turbo*, flux-schnell, flux-dev
                                  (* = not yet supported, requires dual encoders)
   -q, --quantized                Use quantized models (not yet supported)
       --cpu                      Force CPU usage
@@ -209,17 +227,19 @@ This is expected. Try:
 ### Models not downloading
 - Check internet connection
 - Ensure `~/.cache/huggingface/hub/` is writable
-- Some models may require HuggingFace authentication (not currently implemented)
+- For Flux models: Set `HF_TOKEN` in `.env` file and accept model license on HuggingFace
 
 ## Development Status
 
-- [x] Basic Stable Diffusion pipeline
-- [x] SD v1.5 and v2.1 support
-- [x] HuggingFace Hub integration
-- [x] CPU mode
-- [ ] SDXL dual encoder support
-- [ ] GPU/CUDA optimization
-- [ ] Flux model implementation
+- [x] Basic Stable Diffusion pipeline (SD v1.5, v2.1)
+- [x] HuggingFace Hub integration with automatic downloads
+- [x] Flux Schnell and Dev models (T5-XXL + CLIP dual encoders)
+- [x] Sharded safetensors loading for large models
+- [x] CPU mode (tested, working)
+- [x] GPU/CUDA support with FP16/BF16
+- [x] Quality presets (fast, standard, high, ultra)
+- [x] .env file support for HF authentication
+- [ ] SDXL dual CLIP encoder support (in progress)
 - [ ] Quantized model support
 - [ ] Negative prompts
 - [ ] Image-to-image generation
